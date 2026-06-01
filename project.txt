@@ -1,0 +1,3 @@
+Prompt:
+create a plan for web site in pyton fastapi as backend, mysql database and reactjs as frontend,  for an applciaton named shagun, for wedding gifts contribution as cash payment and any functions gift contribution by the invitees 
+the groom or the host registers and crete a group of invitees with phone numbers, and the list of gift items with the appx cost of each item. the Invitees can view the items and provide the contribution for the item(s), once the amout of contribtions equals to item cost no more contributions can be made to the item.

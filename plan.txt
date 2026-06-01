@@ -1,0 +1,474 @@
+Shagun – Wedding Gift Contribution Platform
+
+Tech Stack
+
+Backend: Python + FastAPI
+Database: MySQL
+Frontend: React.js
+Authentication: OTP-based mobile login
+Payments: Razorpay / Stripe / Cashfree (depending on country)
+Notifications: SMS + WhatsApp + Email
+1. Business Overview
+
+Shagun is a collaborative wedding gifting platform where a groom, bride, or host creates a wedding event and publishes a list of desired gifts with estimated costs.
+
+Invitees receive a personalized invitation link and can:
+
+View gift items
+Contribute cash toward one or more items
+Track contribution progress
+Make online payments
+Leave messages for the couple
+
+Once the required amount for a gift is fully funded, further contributions to that gift are blocked.
+
+2. User Roles
+1. Host (Bride/Groom/Family)
+
+Can:
+
+Register/Login
+Create wedding event
+Upload gift list
+Add invitees
+Send invitations
+Monitor contributions
+View payment reports
+Close event
+2. Invitee
+
+Can:
+
+Access event through invitation
+Verify phone number
+Browse gift list
+Contribute to gifts
+View remaining amount
+Pay online
+Leave wishes
+3. Admin
+
+Can:
+
+Manage users
+Manage events
+View payments
+Handle disputes
+Generate reports
+3. Core Workflow
+Host Workflow
+Step 1: Register
+
+Host enters:
+
+Name
+Phone
+Email
+Password / OTP
+Step 2: Create Wedding Event
+
+Fields:
+
+Event Name
+Bride Name
+Groom Name
+Wedding Date
+Venue
+Cover Image
+Description
+Step 3: Add Gift Items
+
+Example:
+
+Gift	Cost
+Refrigerator	₹30,000
+Washing Machine	₹20,000
+Sofa Set	₹40,000
+Honeymoon Fund	₹50,000
+Step 4: Add Invitees
+
+Upload:
+
+Name
+Phone Number
+Email (optional)
+
+Options:
+
+Manual entry
+Excel upload
+CSV upload
+Step 5: Send Invitations
+
+Generate:
+
+https://shagun.com/invite/XYZ123
+
+Send via:
+
+SMS
+WhatsApp
+Email
+Invitee Workflow
+View Event
+
+Invitee sees:
+
+Bride & Groom Details
+Wedding Information
+Gift List
+Contribution Status
+Select Gift
+
+Example:
+
+Sofa Set
+
+Cost: ₹40,000
+Contributed: ₹28,000
+Remaining: ₹12,000
+
+Invitee enters:
+
+₹5,000
+Payment
+
+Online payment:
+
+UPI
+Cards
+Net Banking
+Wallets
+Contribution Update
+
+System updates:
+
+Total Contributed = 33,000
+Remaining = 7,000
+Full Funding Rule
+
+When:
+
+Total Contributions >= Gift Cost
+
+Gift status becomes:
+
+FUNDED
+
+UI shows:
+
+Fully Sponsored
+
+Contribution button disabled.
+
+4. Functional Requirements
+Event Management
+Features
+Create event
+Edit event
+Archive event
+Public/Private visibility
+Gift Management
+Features
+Add gift
+Edit gift
+Delete gift
+Upload image
+Define cost
+Define quantity
+
+Example:
+
+Dinner Set
+Qty: 5
+Unit Cost: 2000
+
+Total:
+
+10000
+Contribution Management
+
+Track:
+
+Gift ID
+Invitee ID
+Amount
+Payment ID
+Timestamp
+
+Rules:
+
+Cannot exceed remaining amount
+Prevent duplicate payment submission
+Refund handling
+Invitee Management
+
+Store:
+
+Name
+Phone
+Email
+Invitation Status
+
+Statuses:
+
+Invited
+Viewed
+Contributed
+Declined
+Messaging
+
+Invitee can leave:
+
+Congratulations Message
+
+Displayed on event page.
+
+5. Database Design
+users
+id
+name
+phone
+email
+password_hash
+role
+created_at
+events
+id
+host_id
+event_name
+bride_name
+groom_name
+event_date
+venue
+description
+status
+created_at
+invitees
+id
+event_id
+name
+phone
+email
+invite_token
+status
+created_at
+gifts
+id
+event_id
+name
+description
+image_url
+cost
+contributed_amount
+status
+created_at
+
+Status:
+
+OPEN
+FUNDED
+CLOSED
+contributions
+id
+gift_id
+invitee_id
+amount
+payment_id
+payment_status
+message
+created_at
+payments
+id
+contribution_id
+gateway
+gateway_txn_id
+amount
+status
+created_at
+wishes
+id
+event_id
+invitee_id
+message
+created_at
+6. API Design (FastAPI)
+Authentication
+POST /api/auth/register
+POST /api/auth/login
+POST /api/auth/send-otp
+POST /api/auth/verify-otp
+Events
+POST /api/events
+GET /api/events
+GET /api/events/{id}
+PUT /api/events/{id}
+DELETE /api/events/{id}
+Gifts
+POST /api/events/{id}/gifts
+GET /api/events/{id}/gifts
+PUT /api/gifts/{id}
+DELETE /api/gifts/{id}
+Invitees
+POST /api/events/{id}/invitees
+POST /api/events/{id}/invitees/upload
+GET /api/events/{id}/invitees
+Contributions
+POST /api/gifts/{id}/contribute
+GET /api/gifts/{id}/contributors
+Payments
+POST /api/payment/create-order
+POST /api/payment/webhook
+Dashboard
+GET /api/dashboard/summary
+GET /api/dashboard/reports
+7. React Frontend Structure
+src/
+├── components/
+│   ├── GiftCard.jsx
+│   ├── ProgressBar.jsx
+│   ├── InviteeList.jsx
+│   ├── PaymentModal.jsx
+│
+├── pages/
+│   ├── Login.jsx
+│   ├── Register.jsx
+│   ├── Dashboard.jsx
+│   ├── EventDetails.jsx
+│   ├── GiftList.jsx
+│   ├── ContributionPage.jsx
+│
+├── services/
+│   ├── api.js
+│
+├── contexts/
+│   ├── AuthContext.jsx
+│
+└── routes/
+8. UI Pages
+Public Pages
+Landing Page
+Product overview
+Create Event button
+Login button
+Invitation Page
+
+Shows:
+
+Wedding Details
+Gift List
+Contribution Progress
+Host Pages
+Dashboard
+
+Cards:
+
+Total Gifts
+Total Contributions
+Funded Gifts
+Invitees
+Gift Management
+Add Gift
+Edit Gift
+Delete Gift
+Invitee Management
+Add Invitees
+Import CSV
+Send Invitations
+Invitee Pages
+Gift Catalog
+
+Displays:
+
+Image
+Name
+Cost
+Contributed
+Remaining
+
+Progress bar:
+
+70% Funded
+Contribution Page
+Gift Name
+Remaining Amount
+Enter Contribution
+Pay Now
+9. Important Business Rules
+Rule 1
+
+Gift cannot receive more money than its cost.
+
+remaining = gift.cost - gift.contributed_amount
+
+if contribution > remaining:
+    raise Exception("Contribution exceeds remaining amount")
+Rule 2
+
+Use database transaction locking to prevent race conditions.
+
+Example:
+
+SELECT * FROM gifts
+WHERE id = ?
+FOR UPDATE;
+Rule 3
+
+Only successful payments increase contribution amount.
+
+Rule 4
+
+Cancelled payments do not reserve gift funding.
+
+Rule 5
+
+When funded:
+
+if contributed_amount >= cost:
+    status = "FUNDED"
+10. Future Enhancements
+Group Contribution
+
+Friends contribute together:
+
+Bride's College Friends
+Target ₹20,000
+Wedding Registry Marketplace
+
+Integrate:
+
+Amazon
+Flipkart
+IKEA
+
+Hosts select products directly.
+
+QR-Based Contributions
+
+Gift card QR code for quick UPI payments.
+
+AI Gift Suggestions
+
+Suggest gifts based on:
+
+Wedding budget
+Couple profile
+Invitee demographics
+Suggested MVP Timeline
+Phase 1 (4–6 Weeks)
+User authentication
+Event creation
+Gift management
+Invitee management
+Contribution tracking
+Payment integration
+Phase 2 (2–3 Weeks)
+WhatsApp/SMS invitations
+Wishes/messages
+Reports/dashboard
+Phase 3 (3–4 Weeks)
+Group gifting
+QR payments
+Marketplace integration
+
+This design gives you a scalable MVP that can support thousands of wedding events while maintaining accurate contribution tracking and preventing over-funding of gift items.

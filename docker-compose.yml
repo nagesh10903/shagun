@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: shagun_mysql
+    restart: always
+    environment:
+      MYSQL_DATABASE: shagun_db
+      MYSQL_USER: shagun_user
+      MYSQL_PASSWORD: shagun_pass
+      MYSQL_ROOT_PASSWORD: root_master_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:
