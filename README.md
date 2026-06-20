@@ -62,7 +62,7 @@ CREATE DATABASE IF NOT EXISTS shagun;
     ```
 4. Configure `.env` using `.env.example` as a template. Make sure to specify the correct MySQL connection string:
     ```env
-    DATABASE_URL=mysql+pymysql://nagesh:test123@localhost/shagun_dbs
+    DATABASE_URL=mysql://nagesh:test123@localhost/shagun_dbs
     ```
 5. Start the FastAPI development server:
     ```bash

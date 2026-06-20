@@ -454,6 +454,7 @@ Suggest gifts based on:
 Wedding budget
 Couple profile
 Invitee demographics
+
 Suggested MVP Timeline
 Phase 1 (4–6 Weeks)
 User authentication

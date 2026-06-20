@@ -10,12 +10,17 @@ const Register = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [phoneAvailable, setPhoneAvailable] = useState(null);
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!name || !phone || !password) return;
+    if (phoneAvailable === false) {
+      setError('Phone number already registered. Please log in instead.');
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -36,7 +41,18 @@ const Register = () => {
       }, 2000);
     } catch (err) {
       setLoading(false);
-      setError(err.response?.data?.detail || 'Registration failed. Check if phone is already registered.');
+      const detail = err.response?.data?.detail || 'Registration failed. Check if phone is already registered.';
+      setError(detail);
+    }
+  };
+
+  const checkPhone = async (value) => {
+    if (!value) return setPhoneAvailable(null);
+    try {
+      const res = await api.get('/api/auth/check-phone', { params: { phone: value } });
+      setPhoneAvailable(res.data?.available ?? null);
+    } catch (e) {
+      setPhoneAvailable(null);
     }
   };
 
@@ -93,8 +109,14 @@ const Register = () => {
                 margin="normal"
                 required
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => { setPhone(e.target.value); setPhoneAvailable(null); }}
+                onBlur={(e) => checkPhone(e.target.value)}
               />
+              {phoneAvailable === false && (
+                <Alert severity="warning" sx={{ mt: 1, mb: 1 }}>
+                  Phone already registered — <Link component={RouterLink} to="/login">Log in</Link>
+                </Alert>
+              )}
               <TextField
                 fullWidth
                 label="Email Address (Optional)"
