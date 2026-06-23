@@ -26,8 +26,8 @@ namespace Shagun.Controlers
         }
 
         [HttpPost]
-        [Microsoft.AspNetCore.Authorization.Authorize]
-        public async Task<IActionResult> AddInvitee(int eventId, [FromBody] Invitee inviteeData)
+        [Authorize]
+        public async Task<IActionResult> AddInvitee(int eventId,[FromBody]InviteeCreateDto inviteeData)
         {
             var currentUser = await _currentUserService.GetCurrentUserAsync();
             if (currentUser == null) return Unauthorized();
@@ -67,7 +67,7 @@ namespace Shagun.Controlers
         }
 
         [HttpGet]
-        [Microsoft.AspNetCore.Authorization.Authorize]
+        [Authorize]
         public async Task<IActionResult> GetInvitees(int eventId)
         {
             var currentUser = await _currentUserService.GetCurrentUserAsync();
@@ -93,7 +93,7 @@ namespace Shagun.Controlers
         }
 
         [HttpPost("/api/events/{eventId}/invitees/upload")]
-        [Microsoft.AspNetCore.Authorization.Authorize]
+        [Authorize]
         public async Task<IActionResult> BulkUploadInvitees(int eventId, IFormFile file)
         {
             var currentUser = await _currentUserService.GetCurrentUserAsync();

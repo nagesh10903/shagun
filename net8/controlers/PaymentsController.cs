@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Text.Json;
 using System.Text;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 
 namespace Shagun.Controlers
 {
@@ -17,13 +18,25 @@ namespace Shagun.Controlers
         private readonly ApplicationDbContext _db;
         private readonly ILogger<PaymentsController> _logger;
 
-        private readonly Shagun.Services.RazorpayService _razorpay;
+        private readonly Shagun.Services.Interfaces.IRazorpayService.IRazorpayService _razorpay;
+        private readonly IConfiguration _config;
 
-        public PaymentsController(ApplicationDbContext db, ILogger<PaymentsController> logger, Shagun.Services.RazorpayService razorpay)
+        public PaymentsController(ApplicationDbContext db, ILogger<PaymentsController> logger, Shagun.Services.Interfaces.IRazorpayService.IRazorpayService razorpay, IConfiguration config)
         {
             _db = db;
             _logger = logger;
             _razorpay = razorpay;
+            _config = config;
+        }
+
+        [HttpGet("/api/payments/razorpay-config")]
+        public IActionResult GetRazorpayConfig()
+        {
+            // Prefer explicit config flag if provided
+            var cfgUseMock = _config.GetValue<bool?>("Razorpay:UseMock");
+            bool useMock = cfgUseMock ?? string.IsNullOrEmpty(_razorpay.KeyId);
+
+            return Ok(new { use_mock = useMock, key_id = _razorpay.KeyId ?? string.Empty });
         }
 
         [HttpPost("/api/payments/verify")]

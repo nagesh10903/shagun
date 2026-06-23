@@ -18,6 +18,7 @@ const Dashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
+  const baseUrl = api.defaults.baseURL; //"http://localhost:5000"
 
   // States
   const [activeTab, setActiveTab] = useState(0);
@@ -41,6 +42,7 @@ const Dashboard = () => {
   const [giftForm, setGiftForm] = useState({
     name: '', description: '', estimated_cost: '', image_url: ''
   });
+  const [giftPreview, setGiftPreview] = useState(null);
   const [inviteeForm, setInviteeForm] = useState({
     name: '', phone: '', email: '', relation: ''
   });
@@ -134,15 +136,28 @@ const Dashboard = () => {
     const file = e.target.files[0];
     if (!file) return;
 
+    // Immediate client-side preview
+    try {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setGiftPreview(ev.target.result);
+      };
+      reader.readAsDataURL(file);
+    } catch (ex) {
+      console.warn('Preview generation failed', ex);
+      setGiftPreview(null);
+    }
+
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const res = await api.post('/api/gifts/upload-image', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      // Let the browser set Content-Type with proper boundary
+      const res = await api.post('/api/gifts/upload-image', formData);
       setGiftForm({ ...giftForm, image_url: res.data.image_url });
     } catch (err) {
-      setError('Failed to upload image.');
+      console.error('Image upload error', err);
+      const detail = err.response?.data?.detail || 'Failed to upload image.';
+      setError(detail);
     }
   };
 
@@ -420,7 +435,7 @@ const Dashboard = () => {
                         {gift.image_url && (
                           <Box
                             component="img"
-                            src={`http://localhost:8000${gift.image_url}`}
+                            src={`${baseUrl}${gift.image_url}`}
                             alt={gift.name}
                             sx={{ height: 200, width: '100%', objectFit: 'cover' }}
                           />
@@ -506,7 +521,7 @@ const Dashboard = () => {
                         </TableHead>
                         <TableBody>
                           {invitees.map((guest) => {
-                            const inviteLink = `http://localhost:5173/invite/${guest.invite_token}`;
+                            const inviteLink = `${baseUrl}/invite/${guest.invite_token}`;
                             return (
                               <TableRow key={guest.id}>
                                 <TableCell sx={{ fontWeight: 600 }}>{guest.name}</TableCell>
@@ -709,6 +724,17 @@ const Dashboard = () => {
                 </Button>
                 {giftForm.image_url && <Typography variant="caption" color="success.main">Uploaded!</Typography>}
               </Stack>
+              {(giftPreview || giftForm.image_url) && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="caption" color="text.secondary">Preview</Typography>
+                  <Box
+                    component="img"
+                    src={giftPreview ? giftPreview : `${api.defaults.baseURL}${giftForm.image_url}`}
+                    alt="Gift preview"
+                    sx={{ width: 140, height: 100, objectFit: 'cover', borderRadius: 1, border: '1px solid rgba(0,0,0,0.06)', mt: 1 }}
+                  />
+                </Box>
+              )}
             </Box>
           </DialogContent>
           <DialogActions>

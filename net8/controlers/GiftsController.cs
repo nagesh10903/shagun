@@ -5,6 +5,9 @@ using Shagun.DTOs;
 using Shagun.Models;
 using System.Threading.Tasks;
 using System.Linq;
+using Microsoft.AspNetCore.Http;
+using System.IO;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Shagun.Controlers
 {
@@ -14,11 +17,44 @@ namespace Shagun.Controlers
         private readonly ApplicationDbContext _db;
 
         private readonly Shagun.Services.CurrentUserService _currentUserService;
+        private readonly Microsoft.Extensions.Logging.ILogger<GiftsController> _logger;
 
-        public GiftsController(ApplicationDbContext db, Shagun.Services.CurrentUserService currentUserService)
+        public GiftsController(ApplicationDbContext db, Shagun.Services.CurrentUserService currentUserService, Microsoft.Extensions.Logging.ILogger<GiftsController> logger)
         {
             _db = db;
             _currentUserService = currentUserService;
+            _logger = logger;
+        }
+
+        [HttpPost("/api/gifts/upload-image")]
+        [Authorize]
+        public async Task<IActionResult> UploadGiftImage([FromForm] IFormFile file)
+        {
+            if (file == null || file.Length == 0) return BadRequest(new { detail = "No file uploaded" });
+
+            try
+            {
+                var uploadsRoot = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "gifts");
+                if (!Directory.Exists(uploadsRoot)) Directory.CreateDirectory(uploadsRoot);
+
+                var ext = Path.GetExtension(file.FileName);
+                var fileName = "gift_" + System.Guid.NewGuid().ToString("N") + ext;
+                var filePath = Path.Combine(uploadsRoot, fileName);
+
+                using (var stream = System.IO.File.Create(filePath))
+                {
+                    await file.CopyToAsync(stream);
+                }
+
+                var publicPath = "/uploads/gifts/" + fileName;
+                _logger.LogInformation("Saved uploaded gift image: {FilePath} -> {PublicPath}", filePath, publicPath);
+                return Ok(new { image_url = publicPath, file_name = fileName });
+            }
+            catch (System.Exception ex)
+            {
+                _logger.LogError(ex, "Error saving uploaded gift image");
+                return StatusCode(500, new { detail = "Failed to save uploaded file", error = ex.Message });
+            }
         }
 
         [HttpPost("/api/events/{eventId}/gifts")]
@@ -30,6 +66,8 @@ namespace Shagun.Controlers
 
             var ev = await _db.Events.FindAsync(eventId);
             if (ev == null || ev.HostId != currentUser.Id) return NotFound(new { detail = "Event not found or unauthorized" });
+
+            _logger.LogInformation("CreateGift received DTO image_url: {ImageUrl}", dto.ImageUrl);
 
             var gift = new GiftItem
             {
@@ -44,6 +82,8 @@ namespace Shagun.Controlers
 
             _db.GiftItems.Add(gift);
             await _db.SaveChangesAsync();
+
+            _logger.LogInformation("Created Gift saved with ImageUrl: {ImageUrl} (Id: {Id})", gift.ImageUrl, gift.Id);
 
             var res = new GiftResponseDto
             {
@@ -112,6 +152,8 @@ namespace Shagun.Controlers
             var ev = await _db.Events.FindAsync(gift.EventId);
             if (ev == null || ev.HostId != currentUser.Id) return Forbid();
 
+            _logger.LogInformation("UpdateGift incoming DTO image_url: {ImageUrl}", dto.ImageUrl);
+
             gift.Name = dto.Name ?? gift.Name;
             gift.Description = dto.Description ?? gift.Description;
             gift.ImageUrl = dto.ImageUrl ?? gift.ImageUrl;
@@ -121,6 +163,8 @@ namespace Shagun.Controlers
             else if (gift.Status == "FUNDED" && gift.ContributedAmount < gift.EstimatedCost) gift.Status = "OPEN";
 
             await _db.SaveChangesAsync();
+
+            _logger.LogInformation("Updated Gift saved with ImageUrl: {ImageUrl} (Id: {Id})", gift.ImageUrl, gift.Id);
 
             var res = new GiftResponseDto
             {

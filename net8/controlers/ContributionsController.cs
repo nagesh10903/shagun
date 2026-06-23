@@ -6,6 +6,7 @@ using Shagun.Models;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Text.Json;
 
 namespace Shagun.Controlers
 {
@@ -13,9 +14,9 @@ namespace Shagun.Controlers
     public class ContributionsController : ControllerBase
     {
         private readonly ApplicationDbContext _db;
-        private readonly Shagun.Services.RazorpayService _razorpay;
+        private readonly Shagun.Services.Interfaces.IRazorpayService.IRazorpayService _razorpay;
 
-        public ContributionsController(ApplicationDbContext db, Shagun.Services.RazorpayService razorpay)
+        public ContributionsController(ApplicationDbContext db, Shagun.Services.Interfaces.IRazorpayService.IRazorpayService razorpay)
         {
             _db = db;
             _razorpay = razorpay;
@@ -26,6 +27,14 @@ namespace Shagun.Controlers
         {
             var gift = await _db.GiftItems.FindAsync(giftId);
             if (gift == null) return NotFound(new { detail = "Gift not found" });
+
+            // Ensure contribution doesn't exceed remaining amount
+            var remainingAmount = gift.EstimatedCost - gift.ContributedAmount;
+            if (remainingAmount <= 0) return BadRequest(new { detail = "Gift already fully funded", remaining = 0 });
+            if (payload.Amount > remainingAmount)
+            {
+                return BadRequest(new { detail = "Contribution exceeds remaining amount", remaining = remainingAmount });
+            }
 
             int? inviteeId = null;
             if (!string.IsNullOrEmpty(payload.InviteeToken))
@@ -38,6 +47,7 @@ namespace Shagun.Controlers
             var payment = new Payment
             {
                 Amount = payload.Amount,
+                GatewayOrderId = "local_" + giftId + "_" + payload.Amount, // Placeholder, updated when order is created
                 Currency = "INR",
                 Status = "INITIATED",
                 Gateway = "RAZORPAY"
@@ -59,7 +69,7 @@ namespace Shagun.Controlers
             _db.Contributions.Add(contribution);
             await _db.SaveChangesAsync();
 
-            // Create Razorpay order
+            // Create Razorpay order (service returns a mock/fallback order when Razorpay config isn't present)
             int amountInPaise = (int)(payload.Amount * 100M);
             var orderJson = await _razorpay.CreateOrderAsync(amountInPaise, "INR", receipt: "contrib_" + contribution.Id);
             if (orderJson == null)

@@ -22,6 +22,7 @@ const EventDetails = () => {
   const [event, setEvent] = useState(null);
   const [gifts, setGifts] = useState([]);
   const [publicFeed, setPublicFeed] = useState([]);
+  const [isMockPayments, setIsMockPayments] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -92,14 +93,24 @@ const EventDetails = () => {
   };
 
   useEffect(() => {
-    fetchEventData();
+    // Fetch site and payment config in parallel
+    const init = async () => {
+      try {
+        const cfg = await api.get('/api/payments/razorpay-config');
+        setIsMockPayments(cfg.data?.use_mock ?? false);
+      } catch (e) {
+        // ignore
+      }
+      await fetchEventData();
+    };
+    init();
   }, [token, eventId]);
 
   const handleOpenContrib = (gift) => {
-    if (gift.status === 'FUNDED') return;
+    const remaining = parseFloat(gift.estimated_cost) - parseFloat(gift.contributed_amount);
+    if (remaining <= 0 || gift.status === 'FUNDED') return;
     setSelectedGift(gift);
     // Pre-suggest remaining balance or a typical value
-    const remaining = parseFloat(gift.estimated_cost) - parseFloat(gift.contributed_amount);
     setContribAmount(Math.min(2000, remaining).toString());
     setOpenContribModal(true);
   };
@@ -134,8 +145,8 @@ const EventDetails = () => {
         return;
       }
 
-      // If it's a mock workflow in development environment
-      if (razorpay_order.order_id.startsWith('order_mock_')) {
+      // If it's a mock workflow in development environment (no key returned)
+      if (!razorpay_order.key_id) {
         // Automatically verify mock payment to make development seamless without payment keys
         await api.post('/api/payments/verify', {
           razorpay_order_id: razorpay_order.order_id,
@@ -189,7 +200,13 @@ const EventDetails = () => {
         rzp.open();
       }
     } catch (err) {
-      alert(err.response?.data?.detail || "Failed to process contribution. Try again.");
+      const serverDetail = err.response?.data?.detail;
+      const serverRemaining = err.response?.data?.remaining;
+      if (serverRemaining !== undefined && serverRemaining !== null) {
+        alert(`${serverDetail}. Maximum allowed: ₹${parseFloat(serverRemaining).toLocaleString()}`);
+      } else {
+        alert(serverDetail || "Failed to process contribution. Try again.");
+      }
     } finally {
       setPaymentLoading(false);
     }
@@ -259,6 +276,11 @@ const EventDetails = () => {
         {successMessage && (
           <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccessMessage(null)}>
             {successMessage}
+          </Alert>
+        )}
+        {isMockPayments && (
+          <Alert severity="info" sx={{ mb: 3 }}>
+            Development mode: mock Razorpay payments active — payments will be auto-verified.
           </Alert>
         )}
 
@@ -362,7 +384,7 @@ const EventDetails = () => {
                           {gift.image_url && (
                             <Box
                               component="img"
-                              src={`http://localhost:8000${gift.image_url}`}
+                              src={`${api.defaults.baseURL}${gift.image_url}`}
                               alt={gift.name}
                               sx={{ height: 180, width: '100%', objectFit: 'cover' }}
                             />
@@ -383,21 +405,22 @@ const EventDetails = () => {
 
                               <LinearProgress variant="determinate" value={percent} sx={{ height: 6, borderRadius: 3, mb: 2 }} />
 
-                              {gift.status === 'FUNDED' ? (
-                                <Button fullWidth variant="contained" disabled sx={{ color: 'success.contrastText', bgcolor: 'success.light' }}>
-                                  Gift Fully Sponsored!
-                                </Button>
-                              ) : (
-                                <Button
-                                  fullWidth
-                                  variant="contained"
-                                  color="primary"
-                                  startIcon={<CardGiftcard />}
-                                  onClick={() => handleOpenContrib(gift)}
-                                >
-                                  Contribute Cash
-                                </Button>
-                              )}
+                              {(() => {
+                                const isFullyFunded = remaining <= 0 || gift.status === 'FUNDED';
+                                return (
+                                  <Button
+                                    fullWidth
+                                    variant="contained"
+                                    color="primary"
+                                    startIcon={<CardGiftcard />}
+                                    disabled={isFullyFunded}
+                                    onClick={!isFullyFunded ? () => handleOpenContrib(gift) : undefined}
+                                    sx={isFullyFunded ? { color: 'success.contrastText', bgcolor: 'success.light' } : undefined}
+                                  >
+                                    {isFullyFunded ? 'Gift Fully Sponsored!' : 'Contribute Cash'}
+                                  </Button>
+                                );
+                              })()}
                             </Box>
                           </CardContent>
                         </Card>

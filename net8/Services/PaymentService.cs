@@ -10,9 +10,9 @@ namespace Shagun.Services
     public class PaymentService
     {
         private readonly ApplicationDbContext _db;
-        private readonly RazorpayService _razorpay;
+        private readonly Shagun.Services.Interfaces.IRazorpayService.IRazorpayService _razorpay;
 
-        public PaymentService(ApplicationDbContext db, RazorpayService razorpay)
+        public PaymentService(ApplicationDbContext db, Shagun.Services.Interfaces.IRazorpayService.IRazorpayService razorpay)
         {
             _db = db;
             _razorpay = razorpay;

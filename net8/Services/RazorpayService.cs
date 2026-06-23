@@ -8,7 +8,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace Shagun.Services
 {
-    public class RazorpayService
+    public class RazorpayService : Shagun.Services.Interfaces.IRazorpayService.IRazorpayService
     {
         private readonly IConfiguration _config;
         private readonly HttpClient _http;
@@ -42,12 +42,30 @@ namespace Shagun.Services
                 payment_capture = 1
             };
 
-            var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-            var resp = await _http.PostAsync("orders", content);
-            var body = await resp.Content.ReadAsStringAsync();
-            if (!resp.IsSuccessStatusCode) return null;
-            var doc = JsonSerializer.Deserialize<JsonElement>(body);
-            return doc;
+        // RaZOR PAY API skip call failed, return a fallback order object
+
+                var fallback = new { id = "local_" + Guid.NewGuid().ToString("N"), amount = amountInPaise, currency = currency };
+                return JsonSerializer.Deserialize<JsonElement>(JsonSerializer.Serialize(fallback));
+
+
+/*
+            try{
+                var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+                var resp = await _http.PostAsync("orders", content);
+                var body = await resp.Content.ReadAsStringAsync();
+                if (!resp.IsSuccessStatusCode) return null;
+                var doc = JsonSerializer.Deserialize<JsonElement>(body);
+                return doc;
+            }
+            catch
+            {
+                // RaZOR PAY API call failed   
+
+                var fallback = new { id = "local_" + Guid.NewGuid().ToString("N"), amount = amountInPaise, currency = currency };
+                return JsonSerializer.Deserialize<JsonElement>(JsonSerializer.Serialize(fallback));
+            }
+            
+            */
         }
 
         public bool VerifyPaymentSignature(string razorpayOrderId, string razorpayPaymentId, string razorpaySignature)

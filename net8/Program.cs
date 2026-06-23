@@ -9,6 +9,8 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using Microsoft.Extensions.FileProviders;
 using System.IO;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -57,7 +59,17 @@ JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<Shagun.Services.CurrentUserService>();
 builder.Services.AddHttpClient("razorpay");
-builder.Services.AddSingleton<Shagun.Services.RazorpayService>();
+
+// Configure Razorpay service implementation via configuration
+var useMockRazorpay = builder.Configuration.GetValue<bool?>("Razorpay:UseMock") ?? true;
+if (useMockRazorpay)
+{
+    builder.Services.AddSingleton<Shagun.Services.Interfaces.IRazorpayService.IRazorpayService, Shagun.Services.MockRazorpayService>();
+}
+else
+{
+    builder.Services.AddSingleton<Shagun.Services.Interfaces.IRazorpayService.IRazorpayService, Shagun.Services.RazorpayService>();
+}
 builder.Services.AddScoped<Shagun.Services.AuthService>();
 builder.Services.AddScoped<Shagun.Services.GiftService>();
 builder.Services.AddScoped<Shagun.Services.PaymentService>();
@@ -104,6 +116,50 @@ else if (Directory.Exists(frontendSrc))
     var provider = new PhysicalFileProvider(frontendSrc);
     app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = provider });
     app.UseStaticFiles(new StaticFileOptions { FileProvider = provider });
+}
+
+// Serve uploaded files from /uploads (uploads/gifts etc.)
+var uploadsPath = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "uploads"));
+Directory.CreateDirectory(uploadsPath);
+{
+    var uploadProvider = new PhysicalFileProvider(uploadsPath);
+    app.UseStaticFiles(new StaticFileOptions { FileProvider = uploadProvider, RequestPath = "/uploads" });
+}
+
+// Attempt to ensure uploads folder is writable by the process on Unix systems
+try
+{
+    if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+    {
+        var psi = new ProcessStartInfo
+        {
+            FileName = "chmod",
+            Arguments = $"-R 0775 \"{uploadsPath}\"",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        using var proc = Process.Start(psi);
+        if (proc != null)
+        {
+            proc.WaitForExit(3000);
+            var outText = proc.StandardOutput.ReadToEnd();
+            var errText = proc.StandardError.ReadToEnd();
+            if (proc.ExitCode == 0)
+            {
+                app.Logger.LogInformation("Set permissions on uploads folder: {UploadsPath}", uploadsPath);
+            }
+            else
+            {
+                app.Logger.LogWarning("chmod exited {Code} for uploads folder. stderr: {Err}", proc.ExitCode, errText);
+            }
+        }
+    }
+}
+catch (System.Exception ex)
+{
+    app.Logger.LogWarning(ex, "Failed to set uploads folder permissions automatically");
 }
 
 // Apply CORS globally before routing so preflight OPTIONS are handled
