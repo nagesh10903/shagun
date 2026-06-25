@@ -1,0 +1,8 @@
+
+// nuget for scaffolding the db 
+dotnet add package Microsoft.EntityFrameworkCore.Design --version 8.0.26  
+
+
+// scaffold db - db frist approach
+dotnet ef dbcontext scaffold "Server=localhost;Port=3306;Database=shagun;User=nagesh;Password=test123;" Pomelo.EntityFrameworkCore.MySql --output-dir Models --context-dir DBRepo --context ApplicationDbContext --no-onconfiguring --force
+
