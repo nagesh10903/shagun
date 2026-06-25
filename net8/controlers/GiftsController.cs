@@ -27,8 +27,9 @@ namespace Shagun.Controlers
         }
 
         [HttpPost("/api/gifts/upload-image")]
+        [Consumes("multipart/form-data")]
         [Authorize]
-        public async Task<IActionResult> UploadGiftImage([FromForm] IFormFile file)
+        public async Task<IActionResult> UploadGiftImage(IFormFile file)
         {
             if (file == null || file.Length == 0) return BadRequest(new { detail = "No file uploaded" });
 

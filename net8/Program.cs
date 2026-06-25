@@ -11,6 +11,8 @@ using Microsoft.Extensions.FileProviders;
 using System.IO;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using Shagun.Swagger;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,6 +30,31 @@ builder.Services.AddScoped<IUserService, UserService>();
 
 
 builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo { Title = "Shagun API", Version = "v1" });
+    c.OperationFilter<FileUploadOperationFilter>();
+    // Add JWT bearer auth to Swagger
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Example: 'Authorization: Bearer {token}'",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+            },
+            new string[] { }
+        }
+    });
+});
 
 // JWT Authentication (basic)
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "replace_this_in_config";
@@ -86,12 +113,13 @@ builder.Services.AddCors(options =>
             policy.WithOrigins(allowed)
                   .AllowAnyHeader()
                   .AllowAnyMethod()
-                  .AllowCredentials();
+                  .AllowCredentials()
+                  .SetIsOriginAllowed(origin => true);
         }
         else
         {
             // No origins configured: be conservative and do not allow cross-origin by default.
-            policy.SetIsOriginAllowed(_ => false);
+            policy.SetIsOriginAllowed(_ => true);
         }
     });
 });
@@ -102,8 +130,8 @@ var app = builder.Build();
 // ------- Configure the HTTP request pipeline.---------
 
 // Serve static files from frontend build (frontend/dist) or frontend folder.
-var frontendDist = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "frontend", "dist"));
-var frontendSrc = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "frontend"));
+var frontendDist = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "wwwroot", "assets"));
+var frontendSrc = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "wwwroot"));
 
 if (Directory.Exists(frontendDist))
 {
@@ -117,6 +145,8 @@ else if (Directory.Exists(frontendSrc))
     app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = provider });
     app.UseStaticFiles(new StaticFileOptions { FileProvider = provider });
 }
+
+// Swagger will be enabled in development after routing is configured below.
 
 // Serve uploaded files from /uploads (uploads/gifts etc.)
 var uploadsPath = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "uploads"));
@@ -165,6 +195,13 @@ catch (System.Exception ex)
 // Apply CORS globally before routing so preflight OPTIONS are handled
 app.UseCors("AllowFrontend");
 app.UseRouting();
+
+// Enable Swagger in development and point UI to the generated JSON
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Shagun API v1"));
+}
 app.UseAuthentication();
 app.UseAuthorization();
 

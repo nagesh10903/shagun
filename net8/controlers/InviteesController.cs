@@ -93,6 +93,7 @@ namespace Shagun.Controlers
         }
 
         [HttpPost("/api/events/{eventId}/invitees/upload")]
+        [Consumes("multipart/form-data")]
         [Authorize]
         public async Task<IActionResult> BulkUploadInvitees(int eventId, IFormFile file)
         {
