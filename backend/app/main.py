@@ -28,7 +28,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     #llow_origins=settings.cors_origins_list,
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -39,6 +39,8 @@ os.makedirs(os.path.join(settings.UPLOAD_DIR, "gifts"), exist_ok=True)
 
 # Mount media static files directory for file storage URLs
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
+app.mount("/static", StaticFiles(directory="dist", html=True), name="frontend")
 
 # Include routers
 app.include_router(auth.router)
