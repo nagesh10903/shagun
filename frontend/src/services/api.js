@@ -1,9 +1,16 @@
 import axios from 'axios';
 
+const isProd = import.meta.env.PROD;
+
+const currentHost = window.location.origin;
+
+//console.log('Current Host:', currentHost);
+
 const API_BASE_URL = 'http://localhost:5000';
 
+
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: isProd? currentHost :  API_BASE_URL,
 });
 
 // Request Interceptor: Attach JWT Token

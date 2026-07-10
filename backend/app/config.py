@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     SECRET_KEY: str = "changeme"
 
-    DATABASE_URL: str = "mysql://nagesh:test123@localhost/shagun"
+    DATABASE_URL: str = "mysql://nagesh:test123@192.168.1.105/shagun"
 
     JWT_SECRET_KEY: str = "shagun-jwt-secret-key-development"
     JWT_ALGORITHM: str = "HS256"
@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     RAZORPAY_KEY_ID: str = "rzp_test_xxx"
     RAZORPAY_KEY_SECRET: str = "xxx"
 
-    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
+    CORS_ORIGINS: str = "http://localhost:5000,https://shagun.iotlawn.com"
 
     UPLOAD_DIR: str = "uploads"
     MAX_UPLOAD_SIZE_MB: int = 5
@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     SMTP_PASS: str = ""
     FROM_EMAIL: str = "noreply@shagun.app"
 
-    FRONTEND_URL: str = "http://localhost:5173"
+    FRONTEND_URL: str = "https://shagun.iotlawn.com"
 
     @property
     def cors_origins_list(self) -> List[str]:
